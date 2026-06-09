@@ -21,10 +21,15 @@ description: |
   - **산출물 (옵션)**:
     ③ `marketing-os/agents/AI-비서-아키텍처.md` (시스템 7 도메인 팀 매트릭스 + 진단)
     ④ Notion 페이지 미러링 (Notion MCP 활성 시)
-  - **이전 통합**: `ai-assistant-build` 스킬 (자동 인벤토리 진단 + 매뉴얼 박제) 흡수
+  - **이전 통합**: `ai-assistant-build` (자동 인벤토리 진단 + 매뉴얼 박제) + `bot-build-install` (최초 셋업 + 환경변수 등록 + 선행 점검) 모두 흡수
+  - **교육생 진입**: 강의 폴더에서 한 줄로 symlink (`ln -sfn .../bot-build ~/.claude/skills/`) → Claude Code 재시작 → 본 스킬 호출 시 STEP 0 가 환경변수·선행 점검 자동 처리
   - 답변 → marketing-os 의 기존 에이전트와 자동 매칭 (daily-briefing · check-ads · cs-responder · weekly-newsletter 등)
   - 미설치 MCP 가 있으면 `mcp설치` 또는 `mcp설치-전체` 스킬 호출 안내
   - **채널별 봇 기능 분리 (선택)**: Q4 응답 시 채널 ID 별 라우팅 표 + `CLAUDE.md` 자동 패치 (소프트 라우팅)
+  - **프리셋 8개 + 자유 설계 Z**:
+    [기본 3] A. 일정·메일 매니저 · B. 마케팅 매니저 · C. 콘텐츠 매니저
+    [고도화 5] D. 리서치 인텔리전스 (Part 4) · E. 콘텐츠 파이프라인 (Part 3+5) · F. 광고 옵스 (Part 6) · G. GA4 데이터 분석 (Part 7) · H. CRM 리텐션 (Part 8)
+    [자유] Z. Q1~Q4 직접 답변
 ---
 
 # 내 봇 구축 (Discord Channels 비서 설계)
@@ -41,80 +46,103 @@ description: |
 🤖 나만의 봇 구축을 시작합니다.
 
 지금 상태:
-  ✅ Discord ↔ Claude 양방향 연결 (--channels 세션 가동 중인지 자동 점검)
+  ✅ Discord ↔ Claude 양방향 연결 (--channels 세션 자동 점검)
   ✅ access 정책 잠금 (allowlist · 본인만)
-  ⚙️ 다음 단계 = 비서 페르소나 + 업무 + 권한 결정
+  ⚙️ 다음 단계 = 비서 페르소나 + 업무 + 권한 + 채널 결정
 
-총 4 질문 · 약 15분 (Q4 는 선택 · 자동 진단 포함).
+═══════════════════════════════════════════════════════════════
+📚 본 스킬 전체 구조 (한눈에 · 5 PHASE · 5~15분)
+═══════════════════════════════════════════════════════════════
 
-5단계 흐름 (총 20~30분 · 프리셋 선택 시 10분):
+┌──────────────────────────────────────────────────────────────┐
+│  📋 PHASE 1 · 봇 기획    인벤토리 자동 스캔                   │
+│  💡 PHASE 2 · 봇 제안    프리셋 8 + 자유 설계 Z              │
+│  🔌 PHASE 3 · MCP 안내   매트릭스 + 권한 매핑                │
+│  ⚙️ PHASE 4 · 봇 설치    settings · launchd · cron 자동      │
+│  📡 PHASE 5 · 채널 연동  디스코드 + 첫 가동 검증             │
+└──────────────────────────────────────────────────────────────┘
 
-  📋 PHASE 1 · 봇 기획 (Plan)
-     사전 점검 + 인벤토리 자동 스캔 (봇·에이전트·MCP·스킬)
+📦 프리셋 라인업 (PHASE 2 에서 1개 선택):
 
-  💡 PHASE 2 · 봇 제안 (Propose)
-     A. 📊 마케팅 데일리 매니저 (가장 보편적 · 추천 ⭐)
-     B. 🚨 광고 옵저버 (광고 운용자 전용)
-     C. ✍️ 콘텐츠 큐레이터 (콘텐츠 제작자 전용)
-     D. 🎨 자유 설계 (Q1~Q4 직접 답변)
+  [기본 3개 · 모든 사용자]              [고도화 5개 · Part 3~8 자산]
+  A. 📅 일정·메일 매니저 ⭐ 추천         D. 🔬 리서치 인텔리전스 (Part 4)
+  B. 📊 마케팅 매니저                   E. 📝 콘텐츠 파이프라인 (Part 3+5)
+  C. ✍️ 콘텐츠 매니저                   F. 💰 광고 옵스 (Part 6)
+                                        G. 📊 GA4 데이터 분석 (Part 7)
+                                        H. 🎯 CRM 리텐션 (Part 8)
+  [자유 설계]
+  Z. 🎨 Q1~Q4 직접 답변
 
-     ⭐ 공통 기본 기능: 매일 아침 07:00 알림 (프리셋 A/B/C 모두 기본 탑재 · D 도 권장 디폴트)
+📝 자동 박제 산출물 5종:
+  ① my-bot-spec.md       (페르소나·에이전트·정책·라우팅)
+  ② OPERATIONS.md        (발화 매뉴얼 15~20개 + 응급 명령)
+  ③ AI-비서-아키텍처.md  (시스템 7 도메인 팀 매트릭스 · 옵션)
+  ④ settings.json 패치   (권한 자동/승인/금지)
+  ⑤ launchd plist        (매일·매주 자동화 · macOS · Windows 분기)
 
-  🔌 PHASE 3 · MCP & 기능 안내 (Inform)
-     선택된 봇의 필요 MCP 매트릭스 + 미설치 MCP 안내 + 도구별 권한 매핑
+⭐ 공통 기본 기능: 매일 아침 07:00 알림 (모든 프리셋 기본 탑재)
 
-  ⚙️ PHASE 4 · 봇 설치 (Install)
-     • my-bot-spec.md · OPERATIONS.md · 아키텍처.md 박제
-     • CLAUDE.md 라우팅 패치 + .claude/settings.json 권한 패치
-     • launchd plist 자동 등록 (매일·매주 자동화)
-     • cron 등록 (즉시 알림 폴링)
+소요 시간:
+  - 프리셋 선택 (A~H)   : 약 5~10분
+  - 자유 설계 (Z)       : 약 15분 (Q1~Q4 직접 답변)
 
-  📡 PHASE 5 · 디스코드 채널 연동 (Connect)
-     • 필요 채널 목록 안내 + 생성 가이드
-     • access.json 의 groups 자동 패치 (채널 ID)
-     • 첫 가동 검증 (폰 DM + 채널 멘션)
-     • 사용 시작 안내 (OPERATIONS.md)
+═══════════════════════════════════════════════════════════════
 
-시작할까요? (y / n)
+시작할까요? (y / n / 더 자세히)
 ```
 
 사용자 `y` → STEP 0 진행.
 
 ---
 
-## STEP 0 · 사전 점검 (자동 10초)
+## STEP 0 · Discord ↔ Claude 양방향 연결 점검 (자동 5초) ⭐
 
-Claude 가 다음 항목을 자동 확인 :
+본 스킬은 **디스코드 봇이 이미 살아있는 상태에서 호출** 되는 후속 스킬.
+시작 전 가장 중요한 **양방향 연결** 부터 점검합니다.
+
+### 양방향 연결 점검 4가지
 
 ```bash
-# 1. Discord Channels 봇 활성 여부
-ls ~/.claude/channels/discord/.env       # 토큰 존재
-cat ~/.claude/channels/discord/access.json | grep dmPolicy   # 정책 확인
-ps aux | grep "claude --channels" | grep -v grep             # 세션 가동
+# 1. 봇 토큰 존재 (.env)
+ls ~/.claude/channels/discord/.env 2>/dev/null && echo "✅ 토큰 OK"
 
-# 2. 현재 세션의 핵심 MCP 활성 여부 (도구 prefix 노출 체크)
-mcp__claude_ai_Gmail__*
-mcp__claude_ai_Google_Calendar__*
-mcp__claude_ai_Notion__*
-mcp__ga4__*
-mcp__meta-ads__*
-mcp__google-ads__*
-mcp__google-sheets__*
-mcp__youtube-data__*
-mcp__buffer__*
-mcp__firecrawl__*
+# 2. access 정책 (allowlist 권장)
+cat ~/.claude/channels/discord/access.json 2>/dev/null | grep dmPolicy
+
+# 3. --channels 세션 살아있는지 (PID 확인)
+ps aux | grep "claude --channels" | grep -v grep
+
+# 4. ⭐ 양방향 도구 5개 시스템 노출 여부 — 핵심
+#    mcp__plugin_discord_discord__reply
+#    mcp__plugin_discord_discord__react
+#    mcp__plugin_discord_discord__edit_message
+#    mcp__plugin_discord_discord__fetch_messages
+#    mcp__plugin_discord_discord__download_attachment
 ```
 
-게이트 :
-```
-사전 점검 결과:
-  - Discord Channels 봇       : ✅ 가동 중 / ⚠️ 셋업 필요
-  - access 정책 (allowlist)   : ✅ / ⚠️
-  - 활성 MCP                  : N 개 (gmail · calendar · ads · ...)
+💡 **4번이 진짜 양방향 연결의 증거** — 도구 5개가 모두 노출되어야 폰 DM → 봇 응답이 가능.
 
-✅ 모두 OK → 질문 시작 (y)
-⚠️ Discord 셋업 부족 → 먼저 `discord-channels-setup` 스킬 호출 (n)
+### 점검 게이트
+
 ```
+Discord ↔ Claude 양방향 연결 점검:
+
+  ✅ 봇 토큰 (.env)              : OK
+  ✅ access 정책                  : allowlist (본인만)
+  ✅ --channels 세션              : 가동 중 (PID xxxxx)
+  ✅ 양방향 도구 5개 노출         : reply · react · edit_message · fetch_messages · download_attachment
+  ✅ 활성 MCP (Gmail/Calendar 등) : N 종
+
+→ Discord ↔ Claude 양방향 연결 정상 ✅
+   STEP 0.5 인벤토리 스캔 진행할까요? (y)
+
+❌ 양방향 끊김 발견 시:
+   - 토큰 없음     → "디스코드 채널 설치" 호출 (discord-channels-setup)
+   - 세션 죽음     → 새 터미널에서 `claude --channels plugin:discord@claude-plugins-official` 재시작
+   - 도구 미노출  → 위 명령으로 새 세션 가동 후 본 스킬 재호출
+```
+
+⚠️ **본인의 봇 (예: marketing-ch) 이 실제로 폰 DM 에 답하는지** 의심된다면 STEP 0.5 진행 전에 폰에서 "hi" 한번 보내 즉답 확인 권장.
 
 ---
 
@@ -156,93 +184,207 @@ Claude 가 5가지를 자동 스캔하고 표로 출력 :
 
 ## STEP 0.7 · 진입 분기 (프리셋 3개 vs 자유 설계)
 
-⚠️ **잘 모르겠으면 프리셋 추천** — 3개 사전 정의된 비서 중 하나 선택 시 Q1~Q4 자동 채움 → STEP 4 종합 분석으로 즉시 점프 (5분 완료).
+⚠️ **잘 모르겠으면 프리셋 추천** — 8개 사전 정의 비서 중 하나 선택 시 Q1~Q4 자동 채움 → STEP 4 종합 분석으로 즉시 점프 (5분 완료).
 
 ```
 ──────────────────────────────────────────
 
 진입 방식 선택:
 
-  A. 📊 마케팅 데일리 매니저 (가장 보편적 · 추천 ⭐)
-     ▸ 매일 07시 통합 브리핑 (광고 + 매출 + CS + 일정)
-     ▸ 매주 월 07시 종합 리포트
-     ▸ 즉시 알림: ROAS < 2.0 임계치
-     ▸ 활용 MCP: ads + sheets + gmail + calendar
-     ▸ 적합: 1인 마케터 · 종합 관리 필요
+[기본 3개 · 모든 사용자]
 
-  B. 🚨 광고 옵저버 (광고 운용자 전용)
-     ▸ 매일 07시 3매체 ROAS · 캠페인 성과
-     ▸ 매주 월 07시 통합 광고 리포트
+  A. 📅 일정·메일 매니저 (가장 기본 · 추천 ⭐)
+     ▸ 매일 07시 오늘 일정 + 어제 받은 새 메일 요약
+     ▸ 매주 월 07시 지난주 회의 요약 + 미답신 메일 정리
+     ▸ 즉시 알림: VIP 메일 도착 · 일정 변경·취소
+     ▸ 활용 MCP: gmail + calendar (Claude.ai 통합 2개만)
+     ▸ 적합: 직장인·프리랜서·1인 사업자
+
+  B. 📊 마케팅 매니저 (광고·매출 운용)
+     ▸ 매일 07시 어제 광고 ROAS + 매출 한눈에 + 새 CS 메일
+     ▸ 매주 월 07시 통합 광고 리포트 (3매체) + CS 분류
      ▸ 즉시 알림: ROAS < 2.0 또는 -30% 급락
-     ▸ 활용 MCP: meta-ads + google-ads + naver-ads
-     ▸ 적합: 광고비 月 300만원+ 운용자
+     ▸ 활용 MCP: meta-ads + google-ads + google-sheets + gmail
+     ▸ 적합: 광고비 월 100만원+ 운용 마케터·사업자
 
-  C. ✍️ 콘텐츠 큐레이터 (콘텐츠 제작자 전용)
-     ▸ 매일 07시 트렌드 모니터링 (네이버·구글)
-     ▸ 매주 월 07시 뉴스레터 작성 (Gmail Draft)
-     ▸ 즉시 알림: 경쟁사 사이트/SNS 변경
+  C. ✍️ 콘텐츠 매니저 (트렌드·뉴스레터·SNS)
+     ▸ 매일 07시 네이버·구글 트렌드 키워드 + 경쟁사 신규 콘텐츠
+     ▸ 매주 월 07시 뉴스레터 작성 (Gmail Draft → 승인 → 발송)
+     ▸ 즉시 알림: 경쟁사 사이트·SNS 큰 변경
      ▸ 활용 MCP: firecrawl + gmail + notion + buffer
      ▸ 적합: 뉴스레터·블로그·SNS 운영자
 
-  D. 🎨 자유 설계 (Q1~Q4 직접 답변)
-     ▸ 페르소나·업무·권한·라우팅 본인이 결정
-     ▸ 소요 15분
+[고도화 5개 · marketing-os Part 3~8 자산 활용]
 
-답변 (A / B / C / D) :
+  D. 🔬 리서치 인텔리전스 (Part 4)
+     ▸ 매일 07시 경쟁사 변경 + 네이버·구글 트렌드 키워드
+     ▸ 매주 월 07시 VoC 리뷰 분석 + SEO 키워드 우선순위 + 광고 레퍼런스
+     ▸ 즉시 알림: 경쟁사 가격 변경·신상품·SNS 큰 변경
+     ▸ 활용 에이전트: competitor-monitor · trend-scanner · voc-analyzer · seo-keyword-research · ad-reference-collector
+     ▸ 활용 MCP: firecrawl + youtube-data + google-sheets + notion
+     ▸ 적합: 시장 리서치 담당·신상품 기획·CMO
+
+  E. 📝 콘텐츠 파이프라인 (Part 3+5)
+     ▸ 매일 07시 콘텐츠 캘린더 (오늘·내일 예약) + 어제 발행 성과
+     ▸ 매주 월 07시 뉴스레터 + 광고 카피 A/B 10패턴 + 6축 품질 점수
+     ▸ 즉시 알림: 발행 직전 품질 < 3.5 · 브랜드 가이드라인 위반
+     ▸ 활용 에이전트: email-newsletter · content-publisher · content-calendar · ad-copy-ab · landing-copy · quality-reviewer-6axis
+     ▸ 활용 MCP: gmail + notion + buffer + figma + canva + higgsfield
+     ▸ 적합: 콘텐츠 마케터·SNS 운영자·뉴스레터 기획자
+
+  F. 💰 광고 옵스 (Part 6)
+     ▸ 매일 07시 3매체 ROAS + CPA + 한눈에 통합
+     ▸ 매주 월 07시 3매체 통합 HTML 리포트 + A/B 테스트 결과
+     ▸ 즉시 알림: ROAS < 2.0 · -30% 급락 · CPA 임계치 초과
+     ▸ 활용 에이전트: analyze-meta · analyze-google-ads · analyze-naver-ads · integrated-ad-report · check-ads · analyze-abtest
+     ▸ 활용 MCP: meta-ads + google-ads + naver-ads (WebFetch) + notion
+     ▸ 적합: 광고비 월 500만원+ 운용·퍼포먼스 마케터
+
+  G. 📊 GA4 데이터 분석 (Part 7)
+     ▸ 매일 07시 어제 트래픽·전환·이탈률 + 경로별 분석
+     ▸ 매주 월 07시 주간 GA4 HTML 리포트 + 노션 자동 게시
+     ▸ 즉시 알림: 전환율 -50% 급락 · 트래픽 급증/급감 · 결제 이탈
+     ▸ 활용 에이전트: ga4-analyzer · ga4-html-report · ga4-notion-publisher
+     ▸ 활용 MCP: ga4 + notion + google-sheets
+     ▸ 적합: 데이터 분석가·이커머스 운영자·그로스 해커
+
+  H. 🎯 CRM 리텐션 (Part 8)
+     ▸ 매일 07시 새 CS 메일 분류 (긴급/환불/일반/스팸) + 답신 Draft + VIP 알림
+     ▸ 매주 월 07시 LTV 세그먼트 분석 + 이탈 위험 고객 + 리텐션 메일 추천
+     ▸ 즉시 알림: 컴플레인·VIP 컴플레인·결제 오류 (사용자 승인)
+     ▸ 활용 에이전트: cs-responder · customer-data-unifier · ltv-analyzer
+     ▸ 활용 MCP: gmail + google-sheets + notion
+     ▸ 적합: 이커머스 CS 매니저·고객 성공·VIP 관리자
+
+[자유 설계]
+
+  Z. 🎨 직접 답변 (Q1~Q4 인터뷰 · 15분)
+     ▸ 페르소나·업무·권한·라우팅 본인이 결정
+
+답변 (A / B / C / D / E / F / G / H / Z) :
 ──────────────────────────────────────────
 ```
 
 ### 프리셋별 자동 채움 값
 
-#### 📊 프리셋 A · 마케팅 데일리 매니저
+#### 📅 프리셋 A · 일정·메일 매니저 (가장 기본 ⭐)
 
 | 항목 | 값 |
 |---|---|
-| **Q1 페르소나** | 단일 사용자 · 부하직원 보고형 · 한국어 + 영문 데이터 · 5줄 이내 |
-| **Q2 매일** | `daily-briefing` · 매일 07:00 · 광고 + 매출 + CS + 일정 통합 |
-| **Q2 매주** | `weekly-report` · 매주 월 07:00 · GA4 + 3매체 광고 + LTV |
-| **Q2 즉시** | `check-ads` · 매시간 cron · ROAS < 2.0 시 디스코드 푸시 |
-| **Q3 자동 OK** | 조회·분석 (list/get/search/read 패턴) |
-| **Q3 승인 필요** | 메일 발송·SNS 게시·일정 생성 |
-| **Q3 금지** | 광고 예산 변경·캠페인 일시중지 |
+| **Q1 페르소나** | 단일 사용자 · 비서 보고형 · 한국어 · 5줄 이내 + 이모지 절제 |
+| **Q2 매일** | 일정+메일 통합 브리핑 · 매일 07:00 · `list_events(today)` + `search_threads(newer_than:1d)` |
+| **Q2 매주** | 지난주 회의 요약 + 미답신 메일 정리 · 매주 월 07:00 |
+| **Q2 즉시** | VIP 메일 도착 · 일정 변경·취소 알림 (Gmail watch + Calendar push) |
+| **Q3 자동 OK** | 조회·요약·Draft 작성 (`list_*` · `search_*` · `get_*` · `read_*`) |
+| **Q3 승인 필요** | 메일 발송 · 일정 생성·수정 · 참석자 추가 |
+| **Q3 금지** | 메일 삭제 · 일정 삭제 · 회의 취소 |
 | **Q4 채널** | 옵션 A (DM 통합) |
 
-#### 🚨 프리셋 B · 광고 옵저버
+#### 📊 프리셋 B · 마케팅 매니저 (광고·매출 운용)
 
 | 항목 | 값 |
 |---|---|
-| **Q1 페르소나** | 광고 운용자 · 데이터 보고형 (간결·숫자) · 한국어 + 영문 캠페인명 · 3줄 + 표 |
-| **Q2 매일** | `analyze-meta` + `analyze-google-ads` + `analyze-naver-ads` · 매일 07:00 |
-| **Q2 매주** | `integrated-ad-report` · 매주 월 07:00 · 3매체 통합 + HTML 리포트 |
-| **Q2 즉시** | `check-ads` · 매시간 cron · ROAS < 2.0 또는 -30% 급락 |
-| **Q3 자동 OK** | 광고 조회·분석·인사이트 |
-| **Q3 승인 필요** | 광고 콘셉트 변경·A/B 테스트 시작 |
-| **Q3 금지** | 예산 변경·캠페인 일시중지·삭제 |
-| **Q4 채널** | 옵션 B (#광고 채널 전용 + DM 백업) |
+| **Q1 페르소나** | 마케터·1인 사업자 · 부하직원 보고형 · 한국어 + 영문 데이터 · 5줄 + 숫자 강조 |
+| **Q2 매일** | `daily-briefing` · 매일 07:00 · 어제 광고 ROAS + 매출 시트 + 새 CS 메일 |
+| **Q2 매주** | `weekly-report` + `integrated-ad-report` · 매주 월 07:00 · GA4 + 3매체 광고 + LTV |
+| **Q2 즉시** | `check-ads` · 매시간 cron · ROAS < 2.0 또는 -30% 급락 시 디스코드 푸시 |
+| **Q3 자동 OK** | 조회·분석 (광고 인사이트 · 시트 read · 메일 search) |
+| **Q3 승인 필요** | 메일 발송 · CS 답신 · 일정 생성 |
+| **Q3 금지** | 광고 예산 변경 · 캠페인 일시중지·삭제 |
+| **Q4 채널** | 옵션 A (DM 통합) 또는 옵션 B (#광고·#CS 분리) |
 
-#### ✍️ 프리셋 C · 콘텐츠 큐레이터
+#### ✍️ 프리셋 C · 콘텐츠 매니저 (트렌드·뉴스레터·SNS)
 
 | 항목 | 값 |
 |---|---|
 | **Q1 페르소나** | 콘텐츠 제작자 · 친근한 어시스턴트 (브랜드 보이스 적용) · 한국어 · 본문은 길게 |
-| **Q2 매일** | `research-trend` · 매일 07:00 · 네이버·구글 트렌드 키워드 |
+| **Q2 매일** | `research-trend` + `research-competitor` · 매일 07:00 · 트렌드 키워드 + 경쟁사 변경 |
 | **Q2 매주** | `email-newsletter` + `send-newsletter` · 매주 월 07:00 · Gmail Draft → 승인 → 발송 |
-| **Q2 즉시** | `research-competitor` · 매일 06:00 · 경쟁사 사이트/SNS 변경 감지 |
-| **Q3 자동 OK** | 트렌드 조회·콘텐츠 Draft 작성 |
-| **Q3 승인 필요** | 발송·SNS 게시·노션 페이지 생성 |
-| **Q3 금지** | 브랜드 보이스 변경·삭제 |
+| **Q2 즉시** | `research-competitor` · 매시간 cron · 경쟁사 사이트·SNS 큰 변경 감지 |
+| **Q3 자동 OK** | 트렌드 조회 · 콘텐츠 Draft 작성 · 노션 fetch |
+| **Q3 승인 필요** | 발송 · SNS 게시 (Buffer) · 노션 페이지 생성 |
+| **Q3 금지** | 브랜드 보이스 변경 · 콘텐츠 삭제 |
 | **Q4 채널** | 옵션 B (#콘텐츠 채널 전용 + DM 백업) |
+
+---
+
+#### 🔬 프리셋 D · 리서치 인텔리전스 (Part 4)
+
+| 항목 | 값 |
+|---|---|
+| **Q1 페르소나** | 시장 리서치 담당·CMO · 분석가형 (인사이트 중심) · 한국어 + 영문 출처 · 표 + 5줄 |
+| **Q2 매일** | `competitor-monitor` + `trend-scanner` · 매일 07:00 · 경쟁사 변경 + 트렌드 키워드 |
+| **Q2 매주** | `voc-analyzer` + `seo-keyword-research` + `ad-reference-collector` · 매주 월 07:00 · 리뷰·SEO·광고 레퍼런스 통합 |
+| **Q2 즉시** | `competitor-monitor` · 매시간 cron · 가격 변경·신상품 출시·SNS 큰 변경 |
+| **Q3 자동 OK** | 경쟁사·트렌드·VoC 조회·분석 |
+| **Q3 승인 필요** | 노션 페이지 생성 · 보고서 게시 |
+| **Q3 금지** | 외부 사이트 자동 액션·구매 |
+| **Q4 채널** | 옵션 B (#리서치 채널 + DM) |
+
+#### 📝 프리셋 E · 콘텐츠 파이프라인 (Part 3+5)
+
+| 항목 | 값 |
+|---|---|
+| **Q1 페르소나** | 콘텐츠 마케터 · 브랜드 보이스 적용 · 한국어 · 본문 길게 + 카피 짧게 |
+| **Q2 매일** | `content-calendar` · 매일 07:00 · 오늘·내일 예약 콘텐츠 + 어제 발행 성과 |
+| **Q2 매주** | `email-newsletter` + `ad-copy-ab` + `quality-reviewer-6axis` · 매주 월 07:00 · 뉴스레터 + 10패턴 카피 + 6축 점수 |
+| **Q2 즉시** | `quality-reviewer-6axis` · 발행 직전 폴링 · 품질 < 3.5 또는 브랜드 가이드라인 위반 |
+| **Q3 자동 OK** | 콘텐츠 Draft·캘린더 조회·6축 점수 |
+| **Q3 승인 필요** | 발송·SNS 게시 (Buffer)·노션 페이지 생성·Figma 디자인 작업 |
+| **Q3 금지** | 브랜드 가이드 변경·콘텐츠 삭제 |
+| **Q4 채널** | 옵션 B (#콘텐츠 + #발행 분리) |
+
+#### 💰 프리셋 F · 광고 옵스 (Part 6)
+
+| 항목 | 값 |
+|---|---|
+| **Q1 페르소나** | 퍼포먼스 마케터 · 데이터 보고형 (숫자 중심) · 한국어 + 영문 캠페인명 · 3줄 + 표 |
+| **Q2 매일** | `analyze-meta` + `analyze-google-ads` + `analyze-naver-ads` · 매일 07:00 · 3매체 ROAS + CPA |
+| **Q2 매주** | `integrated-ad-report` + `analyze-abtest` · 매주 월 07:00 · 3매체 통합 HTML + A/B 결과 |
+| **Q2 즉시** | `check-ads` · 매시간 cron · ROAS < 2.0 · -30% 급락 · CPA 초과 |
+| **Q3 자동 OK** | 광고 조회·분석·인사이트·A/B 통계 |
+| **Q3 승인 필요** | 광고 콘셉트 변경·A/B 테스트 시작·신규 캠페인 생성 |
+| **Q3 금지** | 예산 변경·캠페인 일시중지·삭제 |
+| **Q4 채널** | 옵션 B (#광고 + #알림 분리) |
+
+#### 📊 프리셋 G · GA4 데이터 분석 (Part 7)
+
+| 항목 | 값 |
+|---|---|
+| **Q1 페르소나** | 데이터 분석가·이커머스 운영자 · 분석가형 (이상치 강조) · 한국어 + 영문 메트릭명 · 표 + 차트 |
+| **Q2 매일** | `ga4-analyzer` · 매일 07:00 · 어제 트래픽·전환·이탈률 + 경로별 분석 |
+| **Q2 매주** | `ga4-html-report` + `ga4-notion-publisher` · 매주 월 07:00 · 주간 HTML 리포트 + 노션 게시 |
+| **Q2 즉시** | `ga4-analyzer` · 매시간 cron · 전환율 -50% 급락·트래픽 급증/급감·결제 이탈 |
+| **Q3 자동 OK** | GA4 모든 조회·리포트 작성 |
+| **Q3 승인 필요** | 노션 페이지 게시·HTML 리포트 외부 공유 |
+| **Q3 금지** | GA4 설정 변경·이벤트 삭제 |
+| **Q4 채널** | 옵션 B (#분석 + DM) |
+
+#### 🎯 프리셋 H · CRM 리텐션 (Part 8)
+
+| 항목 | 값 |
+|---|---|
+| **Q1 페르소나** | CS 매니저·고객 성공 · 친절한 보고형 · 한국어 · 5줄 + 발신자 강조 |
+| **Q2 매일** | `cs-responder` · 매일 07:00 · 새 CS 메일 분류 (긴급/환불/일반/스팸) + 답신 Draft + VIP 알림 |
+| **Q2 매주** | `ltv-analyzer` + `customer-data-unifier` · 매주 월 07:00 · LTV 세그먼트 + 이탈 위험 + 리텐션 추천 |
+| **Q2 즉시** | `cs-responder` · 메일 도착 즉시 · 컴플레인·VIP 컴플레인·결제 오류 (사용자 승인 게이트) |
+| **Q3 자동 OK** | CS 메일 조회·분류·LTV 분석·Draft 작성 |
+| **Q3 승인 필요** | 메일 발송·VIP 컴플레인 답신·환불 처리 |
+| **Q3 금지** | 고객 데이터 삭제·메일 일괄 발송 (10건+) |
+| **Q4 채널** | 옵션 B (#CS + #VIP 분리) |
+
+---
 
 ### 분기 결과
 
-- **A / B / C 선택** → 위 값으로 자동 채움 → **STEP 4 (종합 분석) 점프** → STEP 5/5.5 산출물 박제
-- **D 선택** → STEP 1 (Q1 페르소나) 부터 자유 설계 진행
+- **A / B / C / D / E / F / G / H 선택** → 위 값으로 자동 채움 → **STEP 4 (종합 분석) 점프** → STEP 5/5.5 산출물 박제
+- **Z 선택** → STEP 1 (Q1 페르소나) 부터 자유 설계 진행
 
 게이트 :
 ```
-프리셋 A/B/C 선택했나요? 또는 D 자유 설계?
+프리셋 A~H 선택했나요? 또는 Z 자유 설계?
 
-답변 (A / B / C / D) :
+답변 (A / B / C / D / E / F / G / H / Z) :
 ```
 
 ---
