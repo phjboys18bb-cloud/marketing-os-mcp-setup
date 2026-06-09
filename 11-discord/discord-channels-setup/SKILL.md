@@ -133,10 +133,28 @@ uname -s 2>/dev/null || echo "Windows"
 
 ### 0.5-2. 일괄 최적화 스크립트 (관리자 PowerShell · 1분)
 
-**Windows 시작 메뉴 → PowerShell 우클릭 → '관리자 권한으로 실행'** 후 :
+> 💡 컴퓨터를 잘 모르셔도 됩니다. **창 하나 열고 → 복사한 거 붙여넣고 → Enter** 가 전부입니다. 아래 순서대로만 따라오세요.
+
+#### ① "관리자" PowerShell 창 열기 (이게 핵심)
+
+일반 창이 아니라 **관리자 창**이어야 아래 명령이 먹습니다.
+
+```
+1. 키보드 [⊞ 윈도우] 키 누르기 (또는 화면 왼쪽 아래 윈도우 로고 클릭)
+2. powershell  이라고 타이핑
+3. 목록에 뜬 'Windows PowerShell' 위에서  마우스 오른쪽 버튼 클릭
+4. '관리자 권한으로 실행' 클릭
+5. "이 앱이 디바이스를 변경하도록 허용하시겠어요?" 창 →  [예] 클릭
+```
+
+→ ✅ 제대로 열렸으면 **창 맨 위 제목에 "관리자: Windows PowerShell"** 이라고 적혀 있습니다. (이 글자 없으면 1번부터 다시)
+
+#### ② 아래 전체를 복사 → 창에 붙여넣기 → Enter
+
+붙여넣기는 **창 안에서 마우스 오른쪽 버튼 1번 클릭** (Ctrl+V 아님). 그다음 [Enter].
 
 ```powershell
-# (1) Defender 예외 등록 — 가장 큰 효과
+# (1) 백신(Defender)이 설치 파일을 검사하느라 느려지지 않게 '예외' 등록
 Add-MpPreference -ExclusionPath "$env:USERPROFILE\.bun"
 Add-MpPreference -ExclusionPath "$env:USERPROFILE\.claude"
 Add-MpPreference -ExclusionPath "$env:APPDATA\npm"
@@ -144,15 +162,33 @@ Add-MpPreference -ExclusionProcess "bun.exe"
 Add-MpPreference -ExclusionProcess "node.exe"
 Add-MpPreference -ExclusionProcess "claude.exe"
 
-# (2) PowerShell 실행 정책 (현재 사용자만 · Bun 설치 스크립트용)
+# (2) 설치 스크립트 실행을 허용 (윈도우 기본값이 막아둠)
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
 
-# (3) Long Path 지원 (관리자 1회 · 한국어 사용자명 대응)
+# (3) 긴 경로 허용 (한글 사용자명 'C:\Users\홍길동' 일 때 설치 멈춤 방지)
 New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
   -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 ```
 
-3개 모두 성공 메시지 (또는 "already exists") 가 나와야 합니다.
+#### ③ 각 줄이 무슨 일을 하나 (안심용)
+
+| 블록 | 쉬운 설명 | 안전한가요? |
+|---|---|---|
+| (1) Defender 예외 | "이 폴더/프로그램은 백신이 일일이 검사하지 마" 라고 알려줌. 설치가 **3~5배 빨라짐** | ✅ 안전. Claude·Bun **우리가 쓰는 프로그램 폴더만** 지정. 백신 자체는 그대로 켜져 있음 |
+| (2) 실행 정책 | 윈도우가 기본으로 막아둔 **설치 스크립트 실행을 허용**. 'RemoteSigned' = 검증된 것만 허용하는 안전 단계 | ✅ 안전. 현재 사용자에게만 적용 |
+| (3) 긴 경로 | 윈도우의 옛 260자 경로 한계를 풀어줌. **이름이 한글**이면 꼭 필요 | ✅ 안전. 마이크로소프트 공식 설정 |
+
+> ⚠️ 자주 하는 실수: (3) 끝의 **백틱( ` )** 은 "다음 줄과 이어진다"는 표시입니다. 복사할 때 빠지면 에러 납니다. **위 블록을 통째로** 복사하면 문제없습니다.
+
+#### ④ 성공 화면 — 이렇게 나오면 정상
+
+- (1)(3) : **아무 빨간 글씨 없이** 표 형태 정보가 출력되거나 조용히 넘어감
+- 이미 했던 거면 : `이미 있습니다` / `already exists` ← **이것도 정상** (다시 해도 무해)
+- (2) : 아무 메시지 없이 다음 줄로 넘어가면 성공
+
+❌ **빨간 글씨 에러가 보이면?**
+- `액세스가 거부되었습니다 / Access denied` → **관리자 창이 아님**. ①번부터 다시 (제목에 "관리자:" 확인)
+- 그 외 → 그 빨간 줄을 그대로 복사해서 저(Claude)에게 붙여넣어 주세요. 바로 풀어드립니다.
 
 ### 0.5-3. OneDrive 백업 해제 (수동 1분)
 
